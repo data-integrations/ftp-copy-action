@@ -17,6 +17,7 @@
 package co.cask.hydrator.action.ftp;
 
 import co.cask.cdap.api.annotation.Description;
+import co.cask.cdap.api.annotation.Macro;
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
 import co.cask.cdap.api.plugin.PluginConfig;
@@ -59,10 +60,12 @@ public class FTPCopyAction extends Action {
    */
   public class FTPCopyActionConfig extends PluginConfig {
     @Description("Host name of the FTP server.")
+    @Macro
     public String host;
 
     @Description("Port on which FTP server is running. Defaults to 21.")
     @Nullable
+    @Macro
     public String port;
 
     @Description("Protocol to use. Valid values are 'ftp' and 'sftp'. Defaults to 'ftp'.")
@@ -78,10 +81,12 @@ public class FTPCopyAction extends Action {
     public String password;
 
     @Description("Directory on the FTP server which is to be copied.")
+    @Macro
     public String srcDirectory;
 
     @Description("Destination directory to which the files to be copied. If the directory does not exist," +
       " it will be created.")
+    @Macro
     public String destDirectory;
 
     @Description("Boolean flag to determine whether zip files on the FTP server need to be extracted " +
@@ -101,28 +106,22 @@ public class FTPCopyAction extends Action {
       return destDirectory;
     }
 
-    @Nullable
-
     public int getPort() {
       return (port != null) ? Integer.parseInt(port) : 21;
     }
 
-    @Nullable
     public String getProtocol() {
       return (protocol != null) ? "ftp" : protocol;
     }
 
-    @Nullable
     public String getUserName() {
       return (userName != null) ? userName : "anonymous";
     }
 
-    @Nullable
     public String getPassword() {
       return (password != null) ? password : "";
     }
 
-    @Nullable
     public Boolean getExtractZipFiles() {
       return (extractZipFiles != null) ? extractZipFiles : true;
     }
@@ -178,28 +177,22 @@ public class FTPCopyAction extends Action {
           copyZip(ftp, source, fileSystem, destination);
         } else {
           Path destinationPath = fileSystem.makeQualified(new Path(destination, file.getName()));
-          LOG.info("Downloading {} to {}", file.getName(), destinationPath.toString());
-          // try (OutputStream output = new FileOutputStream(new File(destinationPath.toUri()))) {
-          //  ftp.retrieveFile(config.srcDirectory + "/" + file.getName(), output);
-          // }
+          LOG.debug("Downloading {} to {}", file.getName(), destinationPath.toString());
           try (OutputStream output = fileSystem.create(destinationPath)) {
             if (output == null) {
               LOG.error("Null output");
             }
 
             InputStream is = ftp.retrieveFileStream(source);
-            LOG.error("reply string {} and reply code {}", ftp.getReplyString(), ftp.getReplyCode());
             if (is == null) {
               LOG.error("Null input");
             }
             ByteStreams.copy(is, output);
-            // ftp.retrieveFile(config.srcDirectory + "/" + file.getName(), output);
           }
         }
         if (!ftp.completePendingCommand()) {
-          LOG.error("error completing command.");
+          LOG.error("Error completing command.");
         }
-        // ftp.noop();
       }
       ftp.logout();
     } finally {
@@ -218,10 +211,10 @@ public class FTPCopyAction extends Action {
     try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
       ZipEntry entry;
       while ((entry = zis.getNextEntry()) != null) {
-        LOG.info("Extracting {}", entry);
+        LOG.debug("Extracting {}", entry);
         Path destinationPath = fs.makeQualified(new Path(destination, entry.getName()));
         try (OutputStream os = fs.create(destinationPath)) {
-          LOG.info("Downloading {} to {}", entry.getName(), destinationPath.toString());
+          LOG.debug("Downloading {} to {}", entry.getName(), destinationPath.toString());
           ByteStreams.copy(zis, os);
         }
       }
