@@ -24,6 +24,10 @@ import co.cask.cdap.api.plugin.PluginConfig;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.action.ActionContext;
 import com.google.common.io.ByteStreams;
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPFile;
@@ -39,6 +43,8 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Properties;
+import java.util.Vector;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.annotation.Nullable;
@@ -128,8 +134,54 @@ public class FTPCopyAction extends Action {
     }
   }
 
+  private static void runJsch(String host, int port, String user, String password, String srcDir) throws Exception {
+    JSch jsch = new JSch();
+    LOG.info("Adding identity");
+    Session session = jsch.getSession(user, host, port);
+    session.setPassword(password);
+    Properties properties = new Properties();
+    properties.put("StrictHostKeyChecking", "no");
+    session.setConfig(properties);
+    LOG.info("Connecting to Host: {}, Post: {} with User: {}", host, port, user);
+    session.connect();
+    LOG.info("Connected to sftp host.");
+    Channel channel = session.openChannel("sftp");
+    channel.connect();
+    ChannelSftp channelSftp = (ChannelSftp) channel;
+    Vector vv = channelSftp.ls(srcDir);
+    if (vv != null) {
+      for (int ii = 0; ii < vv.size(); ii++) {
+        Object obj = vv.elementAt(ii);
+        if (obj instanceof com.jcraft.jsch.ChannelSftp.LsEntry) {
+          LOG.info("Downloading...{}", (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getLongname()));
+          LOG.info("Downloading...{}", (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getFilename()));
+          String fileName = (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getFilename());
+          if (fileName.endsWith(".zip")) {
+            // copyJschZip(channelSftp.get(fileName), fileSystem, );
+          }
+        }
+      }
+    }
+  }
+
+  private void copyJschZip(InputStream is, FileSystem fs, Path destination) throws IOException {
+    try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
+      ZipEntry entry;
+      while ((entry = zis.getNextEntry()) != null) {
+        LOG.debug("Extracting {}", entry);
+        Path destinationPath = fs.makeQualified(new Path(destination, entry.getName()));
+        try (OutputStream os = fs.create(destinationPath)) {
+          LOG.debug("Downloading {} to {}", entry.getName(), destinationPath.toString());
+          ByteStreams.copy(zis, os);
+        }
+      }
+    }
+  }
+
   @Override
   public void run(ActionContext context) throws Exception {
+    runJsch(config.host, config.getPort(), config.getUserName(), config.getPassword(), config.getSrcDirectory());
+
     Path destination = new Path(config.getDestDirectory());
     FileSystem fileSystem = FileSystem.get(new Configuration());
     destination = fileSystem.makeQualified(destination);
