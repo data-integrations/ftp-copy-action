@@ -28,6 +28,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
+import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -111,7 +112,7 @@ public class FTPCopyAction extends Action {
     }
 
     public String getProtocol() {
-      return (protocol != null) ? "ftp" : protocol;
+      return (protocol != null) ? protocol : "ftp";
     }
 
     public String getUserName() {
@@ -136,7 +137,12 @@ public class FTPCopyAction extends Action {
       fileSystem.mkdirs(destination);
     }
 
-    FTPClient ftp = new FTPClient();
+    FTPClient ftp;
+    if ("ftp".equals(config.getProtocol().toLowerCase())) {
+      ftp = new FTPClient();
+    } else {
+      ftp = new FTPSClient();
+    }
     ftp.setControlKeepAliveTimeout(5);
     // UNIX type server
     FTPClientConfig ftpConfig = new FTPClientConfig();
@@ -160,17 +166,25 @@ public class FTPCopyAction extends Action {
       }
 
       if (!ftp.login(config.getUserName(), config.getPassword())) {
+        LOG.error("login command reply code {}, {}", ftp.getReplyCode(), ftp.getReplyString());
         ftp.logout();
-        LOG.error("Failed to login to the FTP server {}, port {}, userName {}, password {}.", config.getHost(),
-                  config.getPort(), config.getUserName(), config.getPort());
         throw new RuntimeException(String.format("Login to the FTP server %s and port %s failed. " +
                                                    "Please check user name and password.", config.getHost(),
                                                  config.getPort()));
       }
 
-      for (FTPFile file : ftp.listFiles(config.getSrcDirectory())) {
+      FTPFile[] ftpFiles = ftp.listFiles(config.getSrcDirectory());
+      LOG.info("listFiles command reply code: {}, {}.", ftp.getReplyCode(), ftp.getReplyString());
+      // Check the reply code for listFiles call.
+      // If its "522 Data connections must be encrypted" then it means data channel also need to be encrypted
+      if (ftp.getReplyCode() == 522 && "sftp".equalsIgnoreCase(config.getProtocol())) {
+        // encrypt data channel and listFiles again
+        ((FTPSClient) ftp).execPROT("P");
+        LOG.info("Attempting command listFiles on encrypted data channel.");
+        ftpFiles = ftp.listFiles(config.getSrcDirectory());
+      }
+      for (FTPFile file : ftpFiles) {
         String source = config.getSrcDirectory() + "/" + file.getName();
-
 
         LOG.info("Current file {}, source {}", file.getName(), source);
         if (config.getExtractZipFiles() && file.getName().endsWith(".zip")) {
@@ -179,14 +193,7 @@ public class FTPCopyAction extends Action {
           Path destinationPath = fileSystem.makeQualified(new Path(destination, file.getName()));
           LOG.debug("Downloading {} to {}", file.getName(), destinationPath.toString());
           try (OutputStream output = fileSystem.create(destinationPath)) {
-            if (output == null) {
-              LOG.error("Null output");
-            }
-
             InputStream is = ftp.retrieveFileStream(source);
-            if (is == null) {
-              LOG.error("Null input");
-            }
             ByteStreams.copy(is, output);
           }
         }
