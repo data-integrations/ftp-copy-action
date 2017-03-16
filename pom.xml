@@ -14,11 +14,6 @@
       <version>4.1.0</version>
     </dependency>
     <dependency>
-      <groupId>commons-net</groupId>
-      <artifactId>commons-net</artifactId>
-      <version>3.6</version>
-    </dependency>
-    <dependency>
       <groupId>com.jcraft</groupId>
       <artifactId>jsch</artifactId>
       <version>0.1.53</version>
@@ -157,7 +152,6 @@
             <_exportcontents>
               co.cask.*;
               com.google.common.io.*;
-              org.apache.commons.net.ftp.*;
               com.jcraft.jsch.*
             </_exportcontents>
             <Embed-Dependency>*;inline=false;scope=compile</Embed-Dependency>

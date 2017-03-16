@@ -28,11 +28,6 @@ import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPClientConfig;
-import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPReply;
-import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -134,54 +129,8 @@ public class FTPCopyAction extends Action {
     }
   }
 
-  private static void runJsch(String host, int port, String user, String password, String srcDir) throws Exception {
-    JSch jsch = new JSch();
-    LOG.info("Adding identity");
-    Session session = jsch.getSession(user, host, port);
-    session.setPassword(password);
-    Properties properties = new Properties();
-    properties.put("StrictHostKeyChecking", "no");
-    session.setConfig(properties);
-    LOG.info("Connecting to Host: {}, Post: {} with User: {}", host, port, user);
-    session.connect();
-    LOG.info("Connected to sftp host.");
-    Channel channel = session.openChannel("sftp");
-    channel.connect();
-    ChannelSftp channelSftp = (ChannelSftp) channel;
-    Vector vv = channelSftp.ls(srcDir);
-    if (vv != null) {
-      for (int ii = 0; ii < vv.size(); ii++) {
-        Object obj = vv.elementAt(ii);
-        if (obj instanceof com.jcraft.jsch.ChannelSftp.LsEntry) {
-          LOG.info("Downloading...{}", (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getLongname()));
-          LOG.info("Downloading...{}", (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getFilename()));
-          String fileName = (((com.jcraft.jsch.ChannelSftp.LsEntry) obj).getFilename());
-          if (fileName.endsWith(".zip")) {
-            // copyJschZip(channelSftp.get(fileName), fileSystem, );
-          }
-        }
-      }
-    }
-  }
-
-  private void copyJschZip(InputStream is, FileSystem fs, Path destination) throws IOException {
-    try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
-      ZipEntry entry;
-      while ((entry = zis.getNextEntry()) != null) {
-        LOG.debug("Extracting {}", entry);
-        Path destinationPath = fs.makeQualified(new Path(destination, entry.getName()));
-        try (OutputStream os = fs.create(destinationPath)) {
-          LOG.debug("Downloading {} to {}", entry.getName(), destinationPath.toString());
-          ByteStreams.copy(zis, os);
-        }
-      }
-    }
-  }
-
   @Override
   public void run(ActionContext context) throws Exception {
-    runJsch(config.host, config.getPort(), config.getUserName(), config.getPassword(), config.getSrcDirectory());
-
     Path destination = new Path(config.getDestDirectory());
     FileSystem fileSystem = FileSystem.get(new Configuration());
     destination = fileSystem.makeQualified(destination);
@@ -189,84 +138,50 @@ public class FTPCopyAction extends Action {
       fileSystem.mkdirs(destination);
     }
 
-    FTPClient ftp;
-    if ("ftp".equals(config.getProtocol().toLowerCase())) {
-      ftp = new FTPClient();
-    } else {
-      ftp = new FTPSClient();
-    }
-    ftp.setControlKeepAliveTimeout(5);
-    // UNIX type server
-    FTPClientConfig ftpConfig = new FTPClientConfig();
-    // Set additional parameters required for the ftp
-    // for example config.setServerTimeZoneId("Pacific/Pitcairn")
-    ftp.configure(ftpConfig);
-    try {
-      ftp.connect(config.getHost(), config.getPort());
-      ftp.enterLocalPassiveMode();
-      String replyString = ftp.getReplyString();
-      LOG.info("Connected to server {} and port {} with reply from connect as {}.", config.getHost(), config.getPort(),
-               replyString);
+    JSch jsch = new JSch();
+    Session session = jsch.getSession(config.getUserName(), config.getHost(), config.getPort());
+    session.setPassword(config.getPassword());
+    Properties properties = new Properties();
+    properties.put("StrictHostKeyChecking", "no");
+    session.setConfig(properties);
+    LOG.info("Connecting to Host: {}, Post: {} with User: {}", config.getHost(), config.getPort(),
+             config.getUserName());
+    session.connect();
+    LOG.info("Connected to sftp host.");
+    Channel channel = session.openChannel(config.getProtocol());
+    channel.connect();
+    ChannelSftp channelSftp = (ChannelSftp) channel;
 
-      // Check the reply code for actual success
-      int replyCode = ftp.getReplyCode();
+    Vector files = channelSftp.ls(config.getSrcDirectory());
 
-      if (!FTPReply.isPositiveCompletion(replyCode)) {
-        ftp.disconnect();
-        throw new RuntimeException(String.format("FTP server refused connection with code %s and reply %s.",
-                                                 replyCode, replyString));
+    for (int index = 0; index < files.size(); index++) {
+      Object obj = files.elementAt(index);
+      if (!(obj instanceof ChannelSftp.LsEntry)) {
+        continue;
       }
-
-      if (!ftp.login(config.getUserName(), config.getPassword())) {
-        LOG.error("login command reply code {}, {}", ftp.getReplyCode(), ftp.getReplyString());
-        ftp.logout();
-        throw new RuntimeException(String.format("Login to the FTP server %s and port %s failed. " +
-                                                   "Please check user name and password.", config.getHost(),
-                                                 config.getPort()));
+      ChannelSftp.LsEntry entry = (ChannelSftp.LsEntry) obj;
+      if (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) {
+        // ignore "." and ".." files
+        continue;
       }
+      LOG.info("Downloading file {}", entry.getFilename());
 
-      FTPFile[] ftpFiles = ftp.listFiles(config.getSrcDirectory());
-      LOG.info("listFiles command reply code: {}, {}.", ftp.getReplyCode(), ftp.getReplyString());
-      // Check the reply code for listFiles call.
-      // If its "522 Data connections must be encrypted" then it means data channel also need to be encrypted
-      if (ftp.getReplyCode() == 522 && "sftp".equalsIgnoreCase(config.getProtocol())) {
-        // encrypt data channel and listFiles again
-        ((FTPSClient) ftp).execPROT("P");
-        LOG.info("Attempting command listFiles on encrypted data channel.");
-        ftpFiles = ftp.listFiles(config.getSrcDirectory());
-      }
-      for (FTPFile file : ftpFiles) {
-        String source = config.getSrcDirectory() + "/" + file.getName();
+      String completeFileName = config.getSrcDirectory() + "/" + entry.getFilename();
 
-        LOG.info("Current file {}, source {}", file.getName(), source);
-        if (config.getExtractZipFiles() && file.getName().endsWith(".zip")) {
-          copyZip(ftp, source, fileSystem, destination);
-        } else {
-          Path destinationPath = fileSystem.makeQualified(new Path(destination, file.getName()));
-          LOG.debug("Downloading {} to {}", file.getName(), destinationPath.toString());
-          try (OutputStream output = fileSystem.create(destinationPath)) {
-            InputStream is = ftp.retrieveFileStream(source);
-            ByteStreams.copy(is, output);
-          }
-        }
-        if (!ftp.completePendingCommand()) {
-          LOG.error("Error completing command.");
-        }
-      }
-      ftp.logout();
-    } finally {
-      if (ftp.isConnected()) {
-        try {
-          ftp.disconnect();
-        } catch (Throwable e) {
-          LOG.error("Failure to disconnect the ftp connection.", e);
+      if (config.getExtractZipFiles() && entry.getFilename().endsWith(".zip")) {
+        copyJschZip(channelSftp.get(completeFileName), fileSystem, destination);
+      } else {
+        Path destinationPath = fileSystem.makeQualified(new Path(destination, entry.getFilename()));
+        LOG.debug("Downloading {} to {}", entry.getFilename(), destinationPath.toString());
+        try (OutputStream output = fileSystem.create(destinationPath)) {
+          InputStream is = channelSftp.get(completeFileName);
+          ByteStreams.copy(is, output);
         }
       }
     }
   }
 
-  private void copyZip(FTPClient ftp, String source, FileSystem fs, Path destination) throws IOException {
-    InputStream is = ftp.retrieveFileStream(source);
+  private void copyJschZip(InputStream is, FileSystem fs, Path destination) throws IOException {
     try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
       ZipEntry entry;
       while ((entry = zis.getNextEntry()) != null) {
