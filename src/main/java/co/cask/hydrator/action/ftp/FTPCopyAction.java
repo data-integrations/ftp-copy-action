@@ -61,28 +61,22 @@ public class FTPCopyAction extends Action {
    * Configurations for the FTP copy action plugin.
    */
   public class FTPCopyActionConfig extends PluginConfig {
-    @Description("Host name of the FTP server.")
+    @Description("Host name of the SFTP server.")
     @Macro
     public String host;
 
-    @Description("Port on which FTP server is running. Defaults to 21.")
+    @Description("Port on which SFTP server is running. Defaults to 22.")
     @Nullable
     @Macro
     public String port;
 
-    @Description("Protocol to use. Valid values are 'ftp' and 'sftp'. Defaults to 'ftp'.")
-    @Nullable
-    public String protocol;
-
-    @Description("Name of the user used to login to FTP server. Defaults to 'anonymous'.")
-    @Nullable
+    @Description("Name of the user used to login to SFTP server.")
     public String userName;
 
-    @Description("Password used to login to FTP server. Defaults to empty.")
-    @Nullable
+    @Description("Password used to login to SFTP server.")
     public String password;
 
-    @Description("Directory on the FTP server which is to be copied.")
+    @Description("Directory on the SFTP server which is to be copied.")
     @Macro
     public String srcDirectory;
 
@@ -109,19 +103,15 @@ public class FTPCopyAction extends Action {
     }
 
     public int getPort() {
-      return (port != null) ? Integer.parseInt(port) : 21;
-    }
-
-    public String getProtocol() {
-      return (protocol != null) ? protocol : "ftp";
+      return (port != null) ? Integer.parseInt(port) : 22;
     }
 
     public String getUserName() {
-      return (userName != null) ? userName : "anonymous";
+      return userName;
     }
 
     public String getPassword() {
-      return (password != null) ? password : "";
+      return password;
     }
 
     public Boolean getExtractZipFiles() {
@@ -144,11 +134,11 @@ public class FTPCopyAction extends Action {
     Properties properties = new Properties();
     properties.put("StrictHostKeyChecking", "no");
     session.setConfig(properties);
-    LOG.info("Connecting to Host: {}, Post: {} with User: {}", config.getHost(), config.getPort(),
+    LOG.info("Connecting to Host: {}, Port: {}, with User: {}", config.getHost(), config.getPort(),
              config.getUserName());
-    session.connect();
-    LOG.info("Connected to sftp host.");
-    Channel channel = session.openChannel(config.getProtocol());
+    // Set connect timeout to be 30 seconds
+    session.connect(30000);
+    Channel channel = session.openChannel("sftp");
     channel.connect();
     ChannelSftp channelSftp = (ChannelSftp) channel;
 
