@@ -4,7 +4,7 @@
   },
   "configuration-groups": [
     {
-      "label": "FTPCopy Action Properties",
+      "label": "FTP Copy Action Properties",
       "properties": [
         {
           "widget-type": "textbox",
@@ -30,7 +30,7 @@
         },
         {
           "widget-type": "textbox",
-          "label": "User name",
+          "label": "Username",
           "name": "userName"
         },
         {
@@ -55,7 +55,7 @@
         },
         {
           "widget-type": "select",
-          "label": "Should extract zip while copying?",
+          "label": "Unzip files ?",
           "name": "extractZipFiles",
           "widget-attributes": {
             "values": [
