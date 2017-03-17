@@ -162,45 +162,66 @@ public class FTPCopyAction extends Action {
     }
 
     JSch jsch = new JSch();
-    Session session = jsch.getSession(config.getUserName(), config.getHost(), config.getPort());
-    session.setPassword(config.getPassword());
-    Properties properties = new Properties();
-    // properties.put("StrictHostKeyChecking", "no");
-    properties.putAll(getSSHProperties(config.getSshProperties()));
-    LOG.info("Properties {}", properties);
-    session.setConfig(properties);
-    LOG.info("Connecting to Host: {}, Port: {}, with User: {}", config.getHost(), config.getPort(),
-             config.getUserName());
-    // Set connect timeout to be 30 seconds
-    session.connect(30000);
-    Channel channel = session.openChannel("sftp");
-    channel.connect();
-    ChannelSftp channelSftp = (ChannelSftp) channel;
+    Session session = null;
+    Channel channel = null;
+    try {
+      session = jsch.getSession(config.getUserName(), config.getHost(), config.getPort());
+      session.setPassword(config.getPassword());
+      Properties properties = new Properties();
+      // properties.put("StrictHostKeyChecking", "no");
+      properties.putAll(getSSHProperties(config.getSshProperties()));
+      LOG.info("Properties {}", properties);
+      session.setConfig(properties);
+      LOG.info("Connecting to Host: {}, Port: {}, with User: {}", config.getHost(), config.getPort(),
+               config.getUserName());
+      // Set connect timeout to be 30 seconds
+      session.connect(30000);
+      channel = session.openChannel("sftp");
+      channel.connect();
+      ChannelSftp channelSftp = (ChannelSftp) channel;
 
-    Vector files = channelSftp.ls(config.getSrcDirectory());
+      Vector files = channelSftp.ls(config.getSrcDirectory());
 
-    for (int index = 0; index < files.size(); index++) {
-      Object obj = files.elementAt(index);
-      if (!(obj instanceof ChannelSftp.LsEntry)) {
-        continue;
+      for (int index = 0; index < files.size(); index++) {
+        Object obj = files.elementAt(index);
+        if (!(obj instanceof ChannelSftp.LsEntry)) {
+          continue;
+        }
+        ChannelSftp.LsEntry entry = (ChannelSftp.LsEntry) obj;
+        if (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) {
+          // ignore "." and ".." files
+          continue;
+        }
+        LOG.info("Downloading file {}", entry.getFilename());
+
+        String completeFileName = config.getSrcDirectory() + "/" + entry.getFilename();
+
+        if (config.getExtractZipFiles() && entry.getFilename().endsWith(".zip")) {
+          copyJschZip(channelSftp.get(completeFileName), fileSystem, destination);
+        } else {
+          Path destinationPath = fileSystem.makeQualified(new Path(destination, entry.getFilename()));
+          LOG.debug("Downloading {} to {}", entry.getFilename(), destinationPath.toString());
+          try (OutputStream output = fileSystem.create(destinationPath)) {
+            InputStream is = channelSftp.get(completeFileName);
+            ByteStreams.copy(is, output);
+          }
+        }
       }
-      ChannelSftp.LsEntry entry = (ChannelSftp.LsEntry) obj;
-      if (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) {
-        // ignore "." and ".." files
-        continue;
+    } finally {
+      LOG.info("Closing SFTP session.");
+      if (channel != null) {
+        try {
+          channel.disconnect();
+        } catch (Throwable t) {
+          LOG.warn("Error while disconnecting sftp channel.", t);
+        }
       }
-      LOG.info("Downloading file {}", entry.getFilename());
 
-      String completeFileName = config.getSrcDirectory() + "/" + entry.getFilename();
-
-      if (config.getExtractZipFiles() && entry.getFilename().endsWith(".zip")) {
-        copyJschZip(channelSftp.get(completeFileName), fileSystem, destination);
-      } else {
-        Path destinationPath = fileSystem.makeQualified(new Path(destination, entry.getFilename()));
-        LOG.debug("Downloading {} to {}", entry.getFilename(), destinationPath.toString());
-        try (OutputStream output = fileSystem.create(destinationPath)) {
-          InputStream is = channelSftp.get(completeFileName);
-          ByteStreams.copy(is, output);
+      if (session != null) {
+        try {
+          session.disconnect();
+        } catch (Throwable t) {
+          LOG.warn("Error while disconnecting sftp session.", t);
         }
       }
     }
