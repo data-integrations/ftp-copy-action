@@ -4,7 +4,7 @@
   },
   "configuration-groups": [
     {
-      "label": "FTP Copy Action Properties",
+      "label": "FTP Copy Properties",
       "properties": [
         {
           "widget-type": "textbox",
