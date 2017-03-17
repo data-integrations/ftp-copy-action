@@ -9,8 +9,8 @@ Copy files from SFTP server to the specified destination.
 Use Case
 --------
 Common use case is to have files uploaded on the SFTP server in compressed format. These files can then
-be accessed over the network by various applications. This plugin targets use case where files can be downloaded
-from SFTP server in an uncompressed format and stored on the desired destination such as `HDFS`.
+be accessed over the network by various applications. This plugin targets use case where the files can be
+downloaded from SFTP server in an uncompressed format and stored on the desired destination such as `HDFS`.
 
 
 Properties
@@ -35,27 +35,3 @@ the destination while copying. Defaults to 'true'.
 For example to enable verbose logging add property 'LogLevel' with value 'VERBOSE'. To enable host key checking set
 'StrictHostKeyChecking' to 'yes'. SSH can be configured with the properties described here
 'https://linux.die.net/man/5/ssh_config'.
-
-Example
--------
-This example copies all the files from SFTP server `ftp.example.com` at location `/demo/xmls` to
-the destination location `hdfs://hdfs.cluster.com/dest/path`. While copying, `.zip` files in the source
-location will be extracted:
-
-    {
-        "name": "FTPCopy",
-        "plugin": {
-            "name": "FTPCopy",
-            "type": "action",
-            "artifact": {
-                "name": "ftp-copy-action",
-                "version": "1.0-SNAPSHOT",
-                "scope": "USER"
-            },
-            "properties": {
-                "host": "ftp.example.com",
-                "srcDirectory": "/demo/xmls",
-                "destDirectory": "hdfs://hdfs.cluster.com/dest/path"
-            }
-        }
-    }
