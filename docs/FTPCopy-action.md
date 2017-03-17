@@ -1,16 +1,25 @@
 # FTP copy action
 
-
-Description
------------
 Copy files from FTP server to the specified destination.
 
 
-Use Case
---------
+## Plugin Properties
+
+## Usage Notes
+
 Common use case is to have files uploaded on the FTP server in compressed format. These files can then be accessed
 over the network using FTP by various applications. This plugin targets use case where files can be downloaded
 from FTP server in an uncompressed format and stored on the desired destination such as `HDFS`.
+
+* Talk about what happens when there are no files
+* How does it handle files that are repeated, meaning does it keep copying ?
+* What happens when the output directoy is not found what's the behavior
+* What happens when files are large ?
+* What happens when there are 1000s of files ? 
+
+Please answer all these questions in usage notes in words that user will understand. 
+
+Also, please configuration in the format same as Kudu. 
 
 
 Properties
@@ -33,28 +42,3 @@ it will be created. (Macro-enabled)
 
 **extractZipFiles:** Boolean flag to determine whether zip files on the FTP server need to be extracted on
 the destination while copying. Defaults to 'true'.
-
-
-Example
--------
-This example copies all the files from FTP server `ftp.example.com` at location `demo/xmls` to
-the destination location `hdfs://hdfs.cluster.com/dest/path`. While copying the `.zip` files in the source
-location will be extracted:
-
-    {
-        "name": "FTPCopy",
-        "plugin": {
-            "name": "FTPCopy",
-            "type": "action",
-            "artifact": {
-                "name": "ftp-copy-action",
-                "version": "1.0-SNAPSHOT",
-                "scope": "USER"
-            },
-            "properties": {
-                "host": "ftp.example.com",
-                "srcDirectory": "dest/xmls",
-                "destDirectory": "hdfs://hdfs.cluster.com/dest/path"
-            }
-        }
-    }
