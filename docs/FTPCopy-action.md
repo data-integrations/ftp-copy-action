@@ -31,6 +31,10 @@ it will be created. (Macro-enabled)
 **extractZipFiles:** Boolean flag to determine whether zip files on the SFTP server need to be extracted on
 the destination while copying. Defaults to 'true'.
 
+**sshProperties:** Specifies the properties that are used to configure SSH connection to the FTP server.
+For example to enable verbose logging add property 'LogLevel' with value 'VERBOSE'. To enable host key checking set
+'StrictHostKeyChecking' to 'yes'. SSH can be configured with the properties described here
+'https://linux.die.net/man/5/ssh_config'.
 
 Example
 -------

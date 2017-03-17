@@ -64,6 +64,16 @@
             ],
             "default": "true"
           }
+        },
+        {
+          "widget-type": "keyvalue",
+          "label": "Properties for SSH",
+          "name": "sshProperties",
+          "widget-attributes": {
+            "showDelimiter": "false",
+            "key-placeholder": "key",
+            "value-placeholder": "value"
+          }
         }
       ]
     }

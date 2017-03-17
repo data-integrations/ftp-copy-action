@@ -20,9 +20,11 @@ import co.cask.cdap.api.annotation.Description;
 import co.cask.cdap.api.annotation.Macro;
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
+import co.cask.cdap.api.dataset.lib.KeyValue;
 import co.cask.cdap.api.plugin.PluginConfig;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.action.ActionContext;
+import co.cask.hydrator.common.KeyValueListParser;
 import com.google.common.io.ByteStreams;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
@@ -38,6 +40,8 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 import java.util.zip.ZipEntry;
@@ -90,6 +94,13 @@ public class FTPCopyAction extends Action {
     @Nullable
     public Boolean extractZipFiles;
 
+    @Description("Properties that will be used to configure the SSH connection to the FTP server. " +
+      "For example to enable verbose logging add property 'LogLevel' with value 'VERBOSE'. " +
+      "To enable host key checking set 'StrictHostKeyChecking' to 'yes'. " +
+      "SSH can be configured with the properties described here 'https://linux.die.net/man/5/ssh_config'.")
+    @Nullable
+    public String sshProperties;
+
     public String getHost() {
       return host;
     }
@@ -117,6 +128,28 @@ public class FTPCopyAction extends Action {
     public Boolean getExtractZipFiles() {
       return (extractZipFiles != null) ? extractZipFiles : true;
     }
+
+    @Nullable
+    public String getSshProperties() {
+      return sshProperties;
+    }
+  }
+
+  private Map<String, String> getSSHProperties(String sshProperties) {
+    Map<String, String> properties = new HashMap<>();
+    // Default set to no
+    properties.put("StrictHostKeyChecking", "no");
+    if (sshProperties == null || sshProperties.isEmpty()) {
+      return properties;
+    }
+
+    KeyValueListParser kvParser = new KeyValueListParser("\\s*,\\s*", ":");
+    for (KeyValue<String, String> keyVal : kvParser.parse(sshProperties)) {
+      String key = keyVal.getKey();
+      String val = keyVal.getValue();
+      properties.put(key, val);
+    }
+    return properties;
   }
 
   @Override
@@ -132,7 +165,9 @@ public class FTPCopyAction extends Action {
     Session session = jsch.getSession(config.getUserName(), config.getHost(), config.getPort());
     session.setPassword(config.getPassword());
     Properties properties = new Properties();
-    properties.put("StrictHostKeyChecking", "no");
+    // properties.put("StrictHostKeyChecking", "no");
+    properties.putAll(getSSHProperties(config.getSshProperties()));
+    LOG.info("Properties {}", properties);
     session.setConfig(properties);
     LOG.info("Connecting to Host: {}, Port: {}, with User: {}", config.getHost(), config.getPort(),
              config.getUserName());
