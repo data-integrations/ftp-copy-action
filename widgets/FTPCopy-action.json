@@ -6,17 +6,7 @@
     {
       "label": "FTP Copy Properties",
       "properties": [
-        {
-          "widget-type": "textbox",
-          "label": "Host",
-          "name": "host"
-        },
-        {
-          "widget-type": "textbox",
-          "label": "Port",
-          "name": "port"
-        },
-        {
+       {
           "widget-type": "select",
           "label": "Protocol",
           "name": "protocol",
@@ -27,6 +17,16 @@
             ],
             "default": "sftp"
           }
+        },        
+        {
+          "widget-type": "textbox",
+          "label": "Host",
+          "name": "host"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Port",
+          "name": "port"
         },
         {
           "widget-type": "textbox",
