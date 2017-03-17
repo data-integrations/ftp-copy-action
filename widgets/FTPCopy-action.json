@@ -22,10 +22,10 @@
           "name": "protocol",
           "widget-attributes": {
             "values": [
-              "ftp",
-              "sftp"
+              "sftp",
+              "ftp"
             ],
-            "default": "ftp"
+            "default": "sftp"
           }
         },
         {
