@@ -20,16 +20,13 @@ import co.cask.cdap.api.annotation.Description;
 import co.cask.cdap.api.annotation.Macro;
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
-import co.cask.cdap.api.dataset.lib.KeyValue;
-import co.cask.cdap.api.plugin.PluginConfig;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.action.ActionContext;
-import co.cask.hydrator.common.KeyValueListParser;
+import co.cask.hydrator.action.common.FTPActionConfig;
+import co.cask.hydrator.action.common.FTPConnector;
+import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
-import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,9 +37,8 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -64,22 +60,7 @@ public class FTPCopyAction extends Action {
   /**
    * Configurations for the FTP copy action plugin.
    */
-  public class FTPCopyActionConfig extends PluginConfig {
-    @Description("Host name of the SFTP server.")
-    @Macro
-    public String host;
-
-    @Description("Port on which SFTP server is running. Defaults to 22.")
-    @Nullable
-    @Macro
-    public String port;
-
-    @Description("Name of the user used to login to SFTP server.")
-    public String userName;
-
-    @Description("Password used to login to SFTP server.")
-    public String password;
-
+  public class FTPCopyActionConfig extends FTPActionConfig {
     @Description("Directory on the SFTP server which is to be copied.")
     @Macro
     public String srcDirectory;
@@ -94,16 +75,11 @@ public class FTPCopyAction extends Action {
     @Nullable
     public Boolean extractZipFiles;
 
-    @Description("Properties that will be used to configure the SSH connection to the FTP server. " +
-      "For example to enable verbose logging add property 'LogLevel' with value 'VERBOSE'. " +
-      "To enable host key checking set 'StrictHostKeyChecking' to 'yes'. " +
-      "SSH can be configured with the properties described here 'https://linux.die.net/man/5/ssh_config'.")
+    @Description("Name of the variable in which comma separated list of file names that are copied by the " +
+      "plugin will be put.")
     @Nullable
-    public String sshProperties;
+    public String variableNameHoldingFileList;
 
-    public String getHost() {
-      return host;
-    }
 
     public String getSrcDirectory() {
       return srcDirectory;
@@ -113,43 +89,13 @@ public class FTPCopyAction extends Action {
       return destDirectory;
     }
 
-    public int getPort() {
-      return (port != null) ? Integer.parseInt(port) : 22;
-    }
-
-    public String getUserName() {
-      return userName;
-    }
-
-    public String getPassword() {
-      return password;
-    }
-
     public Boolean getExtractZipFiles() {
       return (extractZipFiles != null) ? extractZipFiles : true;
     }
 
-    @Nullable
-    public String getSshProperties() {
-      return sshProperties;
+    public String getVariableNameHoldingFileList() {
+      return variableNameHoldingFileList != null ? variableNameHoldingFileList : "ftp.files.copied";
     }
-  }
-
-  private Map<String, String> getSSHProperties(String sshProperties) {
-    Map<String, String> properties = new HashMap<>();
-    // Default set to no
-    properties.put("StrictHostKeyChecking", "no");
-    if (sshProperties == null || sshProperties.isEmpty()) {
-      return properties;
-    }
-
-    KeyValueListParser kvParser = new KeyValueListParser("\\s*,\\s*", ":");
-    for (KeyValue<String, String> keyVal : kvParser.parse(sshProperties)) {
-      String key = keyVal.getKey();
-      String val = keyVal.getValue();
-      properties.put(key, val);
-    }
-    return properties;
   }
 
   @Override
@@ -161,27 +107,13 @@ public class FTPCopyAction extends Action {
       fileSystem.mkdirs(destination);
     }
 
-    JSch jsch = new JSch();
-    Session session = null;
-    Channel channel = null;
-    try {
-      session = jsch.getSession(config.getUserName(), config.getHost(), config.getPort());
-      session.setPassword(config.getPassword());
-      Properties properties = new Properties();
-      // properties.put("StrictHostKeyChecking", "no");
-      properties.putAll(getSSHProperties(config.getSshProperties()));
-      LOG.info("Properties {}", properties);
-      session.setConfig(properties);
-      LOG.info("Connecting to Host: {}, Port: {}, with User: {}", config.getHost(), config.getPort(),
-               config.getUserName());
-      // Set connect timeout to be 30 seconds
-      session.connect(30000);
-      channel = session.openChannel("sftp");
-      channel.connect();
-      ChannelSftp channelSftp = (ChannelSftp) channel;
+    try (FTPConnector ftpConnector = new FTPConnector(config.getHost(), config.getPort(), config.getUserName(),
+                                                      config.getPassword(), config.getSSHProperties())) {
+      ChannelSftp channelSftp = ftpConnector.getSftpChannel();
 
       Vector files = channelSftp.ls(config.getSrcDirectory());
 
+      List<String> filesCopied = new ArrayList<>();
       for (int index = 0; index < files.size(); index++) {
         Object obj = files.elementAt(index);
         if (!(obj instanceof ChannelSftp.LsEntry)) {
@@ -206,24 +138,10 @@ public class FTPCopyAction extends Action {
             ByteStreams.copy(is, output);
           }
         }
+        filesCopied.add(completeFileName);
       }
-    } finally {
-      LOG.info("Closing SFTP session.");
-      if (channel != null) {
-        try {
-          channel.disconnect();
-        } catch (Throwable t) {
-          LOG.warn("Error while disconnecting sftp channel.", t);
-        }
-      }
-
-      if (session != null) {
-        try {
-          session.disconnect();
-        } catch (Throwable t) {
-          LOG.warn("Error while disconnecting sftp session.", t);
-        }
-      }
+      context.getArguments().set(config.getVariableNameHoldingFileList(), Joiner.on(",").join(filesCopied));
+      LOG.info("Variables copied to {}.", Joiner.on(",").join(filesCopied));
     }
   }
 

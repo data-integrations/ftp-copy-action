@@ -4,7 +4,7 @@
   },
   "configuration-groups": [
     {
-      "label": "FTPCopy Action Properties",
+      "label": "FTPDelete Action Properties",
       "properties": [
         {
           "widget-type": "textbox",
@@ -28,32 +28,22 @@
         },
         {
           "widget-type": "textbox",
-          "label": "Source directory",
-          "name": "srcDirectory"
-        },
-        {
-          "widget-type": "textbox",
-          "label": "Destination directory",
-          "name": "destDirectory"
+          "label": "Comma separated list of file names to delete",
+          "name": "filesToDelete",
+          "widget-attributes": {
+            "default": "${ftp.copied.file.names}"
+          }
         },
         {
           "widget-type": "select",
-          "label": "Should extract zip while copying?",
-          "name": "extractZipFiles",
+          "label": "Continue execution on error",
+          "name": "continueOnError",
           "widget-attributes": {
             "values": [
               "true",
               "false"
             ],
-            "default": "true"
-          }
-        },
-        {
-          "widget-type": "textbox",
-          "label": "Variable name to hold list of copied file names",
-          "name": "variableNameHoldingFileList",
-          "widget-attributes": {
-            "default": "ftp.copied.file.names"
+            "default": "false"
           }
         },
         {
@@ -70,5 +60,5 @@
     }
   ],
   "outputs": [
-        ]
-      }
+  ]
+}
