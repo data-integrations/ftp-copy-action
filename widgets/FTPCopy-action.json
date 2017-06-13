@@ -6,18 +6,6 @@
     {
       "label": "FTP Copy Properties",
       "properties": [
-       {
-          "widget-type": "select",
-          "label": "Protocol",
-          "name": "protocol",
-          "widget-attributes": {
-            "values": [
-              "sftp",
-              "ftp"
-            ],
-            "default": "sftp"
-          }
-        },        
         {
           "widget-type": "textbox",
           "label": "Host",
