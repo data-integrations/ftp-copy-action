@@ -69,10 +69,6 @@ public class FTPCopyAction extends Action {
     @Macro
     public String port;
 
-    @Description("Protocol to use. Valid values are 'ftp' and 'sftp'. Defaults to 'ftp'.")
-    @Nullable
-    public String protocol;
-
     @Description("Name of the user used to login to FTP server. Defaults to 'anonymous'.")
     @Nullable
     public String userName;
@@ -112,7 +108,7 @@ public class FTPCopyAction extends Action {
     }
 
     public String getProtocol() {
-      return (protocol != null) ? protocol : "ftp";
+      return "ftp";
     }
 
     public String getUserName() {
@@ -137,12 +133,7 @@ public class FTPCopyAction extends Action {
       fileSystem.mkdirs(destination);
     }
 
-    FTPClient ftp;
-    if ("ftp".equals(config.getProtocol().toLowerCase())) {
-      ftp = new FTPClient();
-    } else {
-      ftp = new FTPSClient();
-    }
+    FTPClient ftp = new FTPClient();
     ftp.setControlKeepAliveTimeout(5);
     // UNIX type server
     FTPClientConfig ftpConfig = new FTPClientConfig();
@@ -175,14 +166,7 @@ public class FTPCopyAction extends Action {
 
       FTPFile[] ftpFiles = ftp.listFiles(config.getSrcDirectory());
       LOG.info("listFiles command reply code: {}, {}.", ftp.getReplyCode(), ftp.getReplyString());
-      // Check the reply code for listFiles call.
-      // If its "522 Data connections must be encrypted" then it means data channel also need to be encrypted
-      if (ftp.getReplyCode() == 522 && "sftp".equalsIgnoreCase(config.getProtocol())) {
-        // encrypt data channel and listFiles again
-        ((FTPSClient) ftp).execPROT("P");
-        LOG.info("Attempting command listFiles on encrypted data channel.");
-        ftpFiles = ftp.listFiles(config.getSrcDirectory());
-      }
+
       for (FTPFile file : ftpFiles) {
         String source = config.getSrcDirectory() + "/" + file.getName();
 
