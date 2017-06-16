@@ -70,10 +70,12 @@ public class FTPCopyAction extends Action {
 
     @Description("Name of the user used to login to FTP server. Defaults to 'anonymous'.")
     @Nullable
+    @Macro
     public String userName;
 
     @Description("Password used to login to FTP server. Defaults to empty.")
     @Nullable
+    @Macro
     public String password;
 
     @Description("Directory on the FTP server which is to be copied.")
