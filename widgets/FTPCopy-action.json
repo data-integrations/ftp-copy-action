@@ -42,6 +42,11 @@
           "name": "destDirectory"
         },
         {
+          "widget-type": "textbox",
+          "label": "Regex to match files that needs to be copied",
+          "name" : "fileNameRegex"
+        },
+        {
           "widget-type": "select",
           "label": "Unzip files ?",
           "name": "extractZipFiles",

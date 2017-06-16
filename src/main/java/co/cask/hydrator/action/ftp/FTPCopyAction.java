@@ -28,7 +28,6 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
-import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -91,6 +90,10 @@ public class FTPCopyAction extends Action {
     @Nullable
     public Boolean extractZipFiles;
 
+    @Description("Regex to copy only the file names that match. By default, all files will be copied.")
+    @Nullable
+    public String fileNameRegex;
+
     public String getHost() {
       return host;
     }
@@ -121,6 +124,10 @@ public class FTPCopyAction extends Action {
 
     public Boolean getExtractZipFiles() {
       return (extractZipFiles != null) ? extractZipFiles : true;
+    }
+
+    public String getFileNameRegex() {
+      return (fileNameRegex != null) ? fileNameRegex : ".*";
     }
   }
 
@@ -169,6 +176,13 @@ public class FTPCopyAction extends Action {
 
       for (FTPFile file : ftpFiles) {
         String source = config.getSrcDirectory() + "/" + file.getName();
+
+        // Ignore files that don't match the given file regex
+        String fileName = file.getName();
+        if (!fileName.matches(config.getFileNameRegex())) {
+          LOG.debug("Skipping file {} since it doesn't match the regex.", fileName);
+          continue;
+        }
 
         LOG.info("Current file {}, source {}", file.getName(), source);
         if (config.getExtractZipFiles() && file.getName().endsWith(".zip")) {
