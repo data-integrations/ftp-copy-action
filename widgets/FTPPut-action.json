@@ -4,7 +4,7 @@
   },
   "configuration-groups": [
     {
-      "label": "FTP Copy Properties",
+      "label": "FTP Put Properties",
       "properties": [
         {
           "widget-type": "textbox",
@@ -28,8 +28,8 @@
         },
         {
           "widget-type": "textbox",
-          "label": "Source directory",
-          "name": "srcDirectory"
+          "label": "Source Path",
+          "name": "srcPath"
         },
         {
           "widget-type": "textbox",
@@ -40,22 +40,10 @@
           "widget-type": "textbox",
           "label": "Regex to match files that needs to be copied",
           "name" : "fileNameRegex"
-        },
-        {
-          "widget-type": "select",
-          "label": "Unzip files ?",
-          "name": "extractZipFiles",
-          "widget-attributes": {
-            "values": [
-              "true",
-              "false"
-            ],
-            "default": "true"
-          }
         }
       ]
     }
   ],
   "outputs": [
-        ]
-      }
+  ]
+}

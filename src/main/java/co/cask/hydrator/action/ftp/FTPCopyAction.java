@@ -20,14 +20,11 @@ import co.cask.cdap.api.annotation.Description;
 import co.cask.cdap.api.annotation.Macro;
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
-import co.cask.cdap.api.plugin.PluginConfig;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.action.ActionContext;
 import com.google.common.io.ByteStreams;
 import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPReply;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -58,78 +55,30 @@ public class FTPCopyAction extends Action {
   /**
    * Configurations for the FTP copy action plugin.
    */
-  public class FTPCopyActionConfig extends PluginConfig {
-    @Description("Host name of the FTP server.")
-    @Macro
-    public String host;
-
-    @Description("Port on which FTP server is running. Defaults to 21.")
-    @Nullable
-    @Macro
-    public String port;
-
-    @Description("Name of the user used to login to FTP server. Defaults to 'anonymous'.")
-    @Nullable
-    @Macro
-    public String userName;
-
-    @Description("Password used to login to FTP server. Defaults to empty.")
-    @Nullable
-    @Macro
-    public String password;
+  public class FTPCopyActionConfig extends FTPActionConfig {
 
     @Description("Directory on the FTP server which is to be copied.")
     @Macro
     public String srcDirectory;
-
-    @Description("Destination directory to which the files to be copied. If the directory does not exist," +
-      " it will be created.")
-    @Macro
-    public String destDirectory;
 
     @Description("Boolean flag to determine whether zip files on the FTP server need to be extracted " +
       "on the destination while copying. Defaults to 'true'.")
     @Nullable
     public Boolean extractZipFiles;
 
-    @Description("Regex to copy only the file names that match. By default, all files will be copied.")
-    @Nullable
-    public String fileNameRegex;
-
-    public String getHost() {
-      return host;
+    public FTPCopyActionConfig(String host, String port, String userName, String password, String srcDirectory,
+                               String destDirectory, String fileNameRegex, boolean extractZipFiles) {
+      super(host, port, userName, password, destDirectory, fileNameRegex);
+      this.srcDirectory = srcDirectory;
+      this.extractZipFiles = extractZipFiles;
     }
 
     public String getSrcDirectory() {
       return srcDirectory;
     }
 
-    public String getDestDirectory() {
-      return destDirectory;
-    }
-
-    public int getPort() {
-      return (port != null) ? Integer.parseInt(port) : 21;
-    }
-
-    public String getProtocol() {
-      return "ftp";
-    }
-
-    public String getUserName() {
-      return (userName != null) ? userName : "anonymous";
-    }
-
-    public String getPassword() {
-      return (password != null) ? password : "";
-    }
-
     public Boolean getExtractZipFiles() {
       return (extractZipFiles != null) ? extractZipFiles : true;
-    }
-
-    public String getFileNameRegex() {
-      return (fileNameRegex != null) ? fileNameRegex : ".*";
     }
   }
 
@@ -142,36 +91,9 @@ public class FTPCopyAction extends Action {
       fileSystem.mkdirs(destination);
     }
 
-    FTPClient ftp = new FTPClient();
-    ftp.setControlKeepAliveTimeout(5);
-    // UNIX type server
-    FTPClientConfig ftpConfig = new FTPClientConfig();
-    // Set additional parameters required for the ftp
-    // for example config.setServerTimeZoneId("Pacific/Pitcairn")
-    ftp.configure(ftpConfig);
+    FTPClient ftp = null;
     try {
-      ftp.connect(config.getHost(), config.getPort());
-      ftp.enterLocalPassiveMode();
-      String replyString = ftp.getReplyString();
-      LOG.info("Connected to server {} and port {} with reply from connect as {}.", config.getHost(), config.getPort(),
-               replyString);
-
-      // Check the reply code for actual success
-      int replyCode = ftp.getReplyCode();
-
-      if (!FTPReply.isPositiveCompletion(replyCode)) {
-        ftp.disconnect();
-        throw new RuntimeException(String.format("FTP server refused connection with code %s and reply %s.",
-                                                 replyCode, replyString));
-      }
-
-      if (!ftp.login(config.getUserName(), config.getPassword())) {
-        LOG.error("login command reply code {}, {}", ftp.getReplyCode(), ftp.getReplyString());
-        ftp.logout();
-        throw new RuntimeException(String.format("Login to the FTP server %s and port %s failed. " +
-                                                   "Please check user name and password.", config.getHost(),
-                                                 config.getPort()));
-      }
+      ftp = FTPUtils.getFTPClient(config.getHost(), config.getPort(), config.getUserName(), config.getPassword());
 
       FTPFile[] ftpFiles = ftp.listFiles(config.getSrcDirectory());
       LOG.info("listFiles command reply code: {}, {}.", ftp.getReplyCode(), ftp.getReplyString());
@@ -203,7 +125,7 @@ public class FTPCopyAction extends Action {
       }
       ftp.logout();
     } finally {
-      if (ftp.isConnected()) {
+      if (ftp != null && ftp.isConnected()) {
         try {
           ftp.disconnect();
         } catch (Throwable e) {
