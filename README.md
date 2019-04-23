@@ -1,6 +1,6 @@
 # FTP Copy Plugins
 
-[![cm-available](https://cdap-users.herokuapp.com/assets/cm-available.svg)](https://docs.cask.co/cdap/current/en/integrations/cask-market.html)
+[![cm-available](https://cdap-users.herokuapp.com/assets/cm-available.svg)](https://docs.cdap.io/cdap/current/en/integrations/cask-market.html)
 ![cdap-action](https://cdap-users.herokuapp.com/assets/cdap-action.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Join CDAP community](https://cdap-users.herokuapp.com/badge.svg?t=wrangler)](https://cdap-users.herokuapp.com?t=1)
@@ -75,7 +75,7 @@ CDAP IRC Channel: #cdap on [irc.freenode.net](http://irc.freenode.net)
 
 ## License and Trademarks
 
-Copyright © 2015-2016 Cask Data, Inc.
+Copyright © 2015-2019 Cask Data, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
 in compliance with the License. You may obtain a copy of the License at
