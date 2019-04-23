@@ -21,7 +21,7 @@
   <groupId>io.cdap.plugin</groupId>
   <artifactId>ftp-copy-action</artifactId>
   <packaging>jar</packaging>
-  <version>1.3.0</version>
+  <version>1.4.0-SNAPSHOT</version>
   <name>ftp-copy-action</name>
   <url>http://maven.apache.org</url>
 
