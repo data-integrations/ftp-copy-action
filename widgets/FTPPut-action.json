@@ -12,7 +12,7 @@
           "name": "host"
         },
         {
-          "widget-type": "textbox",
+          "widget-type": "number",
           "label": "Port",
           "name": "port"
         },

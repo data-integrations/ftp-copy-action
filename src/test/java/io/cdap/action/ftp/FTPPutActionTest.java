@@ -16,6 +16,7 @@
 
 package io.cdap.action.ftp;
 
+import io.cdap.cdap.etl.mock.action.MockActionContext;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -119,14 +120,14 @@ public class FTPPutActionTest {
 
   @Test
   public void testFTPPutAction() throws Exception {
-    FTPPutAction.FTPPutActionConfig actionConfig = new FTPPutAction.FTPPutActionConfig(
-      "localhost", Integer.toString(port), USER, PWD, srcFolder.getAbsolutePath(), DATA_DIR, "c.*");
+    FTPPutActionConfig actionConfig = new FTPPutActionConfig(
+      "localhost", port, USER, PWD, srcFolder.getAbsolutePath(), DATA_DIR, "c.*");
     FTPPutAction action = new FTPPutAction(actionConfig);
 
     UnixFakeFileSystem fs = (UnixFakeFileSystem) ftpServer.getFileSystem();
     List names = fs.listFiles(dataFolder.getPath());
     Assert.assertEquals(0, names.size());
-    action.run(null);
+    action.run(new MockActionContext());
     names = fs.listNames(dataFolder.getPath());
     Assert.assertEquals(1, names.size());
   }
