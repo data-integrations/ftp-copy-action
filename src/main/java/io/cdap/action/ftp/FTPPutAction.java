@@ -16,10 +16,10 @@
 
 package io.cdap.action.ftp;
 
-import io.cdap.cdap.api.annotation.Description;
-import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
+import io.cdap.cdap.etl.api.FailureCollector;
+import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.api.action.ActionContext;
 import org.apache.commons.net.ftp.FTPClient;
@@ -46,28 +46,19 @@ public class FTPPutAction extends Action {
     this.config = config;
   }
 
-  /**
-   * Configurations for the FTP Put Action Plugin.
-   */
-  public static class FTPPutActionConfig extends FTPActionConfig {
-
-    @Description("Directory or File on the Filesystem which needs to be copied to the FTP Server.")
-    @Macro
-    public String srcPath;
-
-    public FTPPutActionConfig(String host, String port, String userName, String password,
-                              String srcPath, String destDirectory, String fileNameRegex) {
-      super(host, port, userName, password, destDirectory, fileNameRegex);
-      this.srcPath = srcPath;
-    }
-
-    public String getSrcPath() {
-      return srcPath;
-    }
+  @Override
+  public void configurePipeline(PipelineConfigurer pipelineConfigurer) {
+    FailureCollector collector = pipelineConfigurer.getStageConfigurer().getFailureCollector();
+    config.validate(collector);
+    collector.getOrThrowException();
   }
 
   @Override
   public void run(ActionContext context) throws Exception {
+    FailureCollector collector = context.getFailureCollector();
+    config.validate(collector);
+    collector.getOrThrowException();
+
     Path source = new Path(config.getSrcPath());
     FileSystem fileSystem = FileSystem.get(new Configuration());
     if (!fileSystem.exists(source)) {

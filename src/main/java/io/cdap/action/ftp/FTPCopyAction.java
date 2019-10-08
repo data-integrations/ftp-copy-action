@@ -16,13 +16,13 @@
 
 package io.cdap.action.ftp;
 
-import io.cdap.cdap.api.annotation.Description;
-import io.cdap.cdap.api.annotation.Macro;
+import com.google.common.io.ByteStreams;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
+import io.cdap.cdap.etl.api.FailureCollector;
+import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.api.action.ActionContext;
-import com.google.common.io.ByteStreams;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.hadoop.conf.Configuration;
@@ -37,7 +37,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import javax.annotation.Nullable;
 
 /**
  * An {@link Action} that will copy files from FTP server to the destination directory.
@@ -52,38 +51,19 @@ public class FTPCopyAction extends Action {
     this.config = config;
   }
 
-  /**
-   * Configurations for the FTP copy action plugin.
-   */
-  public class FTPCopyActionConfig extends FTPActionConfig {
-
-    @Description("Directory on the FTP server which is to be copied.")
-    @Macro
-    public String srcDirectory;
-
-    @Description("Boolean flag to determine whether zip files on the FTP server need to be extracted " +
-      "on the destination while copying. Defaults to 'true'.")
-    @Nullable
-    public Boolean extractZipFiles;
-
-    public FTPCopyActionConfig(String host, String port, String userName, String password, String srcDirectory,
-                               String destDirectory, String fileNameRegex, boolean extractZipFiles) {
-      super(host, port, userName, password, destDirectory, fileNameRegex);
-      this.srcDirectory = srcDirectory;
-      this.extractZipFiles = extractZipFiles;
-    }
-
-    public String getSrcDirectory() {
-      return srcDirectory;
-    }
-
-    public Boolean getExtractZipFiles() {
-      return (extractZipFiles != null) ? extractZipFiles : true;
-    }
+  @Override
+  public void configurePipeline(PipelineConfigurer pipelineConfigurer) {
+    FailureCollector collector = pipelineConfigurer.getStageConfigurer().getFailureCollector();
+    config.validate(collector);
+    collector.getOrThrowException();
   }
 
   @Override
   public void run(ActionContext context) throws Exception {
+    FailureCollector collector = context.getFailureCollector();
+    config.validate(collector);
+    collector.getOrThrowException();
+
     Path destination = new Path(config.getDestDirectory());
     FileSystem fileSystem = FileSystem.get(new Configuration());
     destination = fileSystem.makeQualified(destination);
