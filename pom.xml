@@ -21,13 +21,13 @@
   <groupId>io.cdap.plugin</groupId>
   <artifactId>ftp-copy-action</artifactId>
   <packaging>jar</packaging>
-  <version>1.4.0-SNAPSHOT</version>
+  <version>1.4.0</version>
   <name>ftp-copy-action</name>
   <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>6.1.0-SNAPSHOT</cdap.version>
+    <cdap.version>6.1.1</cdap.version>
     <mock.ftp.version>2.6</mock.ftp.version>
     <junit.version>4.11</junit.version>
   </properties>
@@ -87,8 +87,8 @@
         <version>1.1.0</version>
         <configuration>
           <cdapArtifacts>
-            <parent>system:cdap-data-pipeline[6.1.0-SNAPSHOT,7.0.0-SNAPSHOT)</parent>
-            <parent>system:cdap-data-streams[6.1.0-SNAPSHOT,7.0.0-SNAPSHOT)</parent>
+            <parent>system:cdap-data-pipeline[6.1.1,7.0.0-SNAPSHOT)</parent>
+            <parent>system:cdap-data-streams[6.1.1,7.0.0-SNAPSHOT)</parent>
           </cdapArtifacts>
         </configuration>
         <executions>
