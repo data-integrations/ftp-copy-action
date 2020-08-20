@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017-2019 Cask Data, Inc.
+ * Copyright © 2017-2020 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -52,6 +52,7 @@ public class FTPActionConfig extends PluginConfig {
 
   @Description("Regex to copy only the file names that match. By default, all files will be copied.")
   @Nullable
+  @Macro
   public String fileNameRegex;
 
   public FTPActionConfig(String host, String port, String userName, String password, String destDirectory,
