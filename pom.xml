@@ -29,7 +29,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.version>6.3.0-SNAPSHOT</cdap.version>
     <mock.ftp.version>2.6</mock.ftp.version>
-    <junit.version>4.11</junit.version>
+    <junit.version>4.13.1</junit.version>
   </properties>
 
   <dependencies>
